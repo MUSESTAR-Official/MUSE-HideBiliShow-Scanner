@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-B站会员购项目Hide状态扫描器
-用于扫描指定ID范围内的项目，检查hide字段是否为1
-"""
 
 import requests
 import time
@@ -16,7 +12,6 @@ from typing import List, Dict, Optional
 
 
 def get_version():
-    """获取程序版本号"""
     try:
         if hasattr(sys, '_MEIPASS'):
             base_path = sys._MEIPASS
@@ -32,13 +27,12 @@ def get_version():
                 if match:
                     return match.group(1)
         
-        return "1.0.0"
+        return "0.0.0"
     except Exception as e:
         return "未知版本"
 
 
 def show_muse_banner():
-    """显示MUSE横幅"""
     banner = r"""
           _____                    _____                    _____                    _____          
          /\    \                  /\    \                  /\    \                  /\    \         
@@ -70,7 +64,6 @@ def show_muse_banner():
 
 
 class BilibiliShowScanner:
-    """B站会员购项目扫描器"""
     
     def __init__(self):
         self.api_url = "https://show.bilibili.com/api/ticket/project/getV2?id="
@@ -85,15 +78,6 @@ class BilibiliShowScanner:
         self.scan_results = []
         
     def get_project_info(self, project_id: int) -> Optional[Dict]:
-        """
-        获取项目信息
-        
-        Args:
-            project_id: 项目ID
-            
-        Returns:
-            项目信息字典，如果请求失败返回None
-        """
         try:
             url = f"{self.api_url}{project_id}"
             response = self.session.get(url, timeout=10)
@@ -117,15 +101,6 @@ class BilibiliShowScanner:
             return None
     
     def scan_project(self, project_id: int) -> Dict:
-        """
-        扫描单个项目
-        
-        Args:
-            project_id: 项目ID
-            
-        Returns:
-            扫描结果字典
-        """
         result = {
             'id': project_id,
             'hide': None,
@@ -145,21 +120,12 @@ class BilibiliShowScanner:
         result['name'] = project_info.get('name', '未知项目')
         result['status'] = 'success'
         
-        # 如果hide为1，添加到隐藏项目列表
         if result['hide'] == 1:
             self.hidden_projects.append(result)
             
         return result
     
     def scan_range(self, start_id: int, end_id: int, interval: float = 0.5):
-        """
-        扫描指定范围的项目ID
-        
-        Args:
-            start_id: 起始ID
-            end_id: 结束ID
-            interval: 扫描间隔（秒）
-        """
         print(f"开始扫描项目ID范围: {start_id} - {end_id}")
         print(f"扫描间隔: {interval}秒")
         print("-" * 60)
@@ -173,11 +139,9 @@ class BilibiliShowScanner:
         for project_id in range(start_id, end_id + 1):
             scanned_count += 1
             
-            # 显示进度
             progress = (scanned_count / total_count) * 100
             print(f"[{progress:.1f}%] 扫描ID: {project_id}", end=" ")
             
-            # 扫描项目
             result = self.scan_project(project_id)
             self.scan_results.append(result)
             
@@ -189,7 +153,6 @@ class BilibiliShowScanner:
             else:
                 print(f"hide={result['hide']}")
             
-            # 如果不是最后一个ID，等待间隔时间
             if project_id < end_id:
                 time.sleep(interval)
         
@@ -210,12 +173,6 @@ class BilibiliShowScanner:
                 print(f"  ID: {project['id']} - {project['name']}")
     
     def save_results(self, filename: str = None):
-        """
-        保存扫描结果到JSON文件
-        
-        Args:
-            filename: 文件名，如果为None则使用时间戳
-        """
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"bilibili_scan_results_{timestamp}.json"
@@ -237,7 +194,6 @@ class BilibiliShowScanner:
 
 
 def get_user_input():
-    """获取用户输入的ID范围"""
     
     while True:
         try:
@@ -263,22 +219,16 @@ def get_user_input():
 
 
 def main():
-    """主函数"""
     while True:
         try:
-            # 显示横幅
             show_muse_banner()
             
-            # 获取用户输入
             start_id, end_id = get_user_input()
             
-            # 创建扫描器实例
             scanner = BilibiliShowScanner()
             
-            # 开始扫描
             scanner.scan_range(start_id, end_id)
             
-            # 询问是否保存结果
             save_choice = input("\n是否保存扫描结果到文件? (y/n): ").lower().strip()
             if save_choice in ['y', 'yes', '是', '保存']:
                 scanner.save_results()
@@ -286,14 +236,13 @@ def main():
             print("\n程序执行完毕!")
             
         except KeyboardInterrupt:
-            print("\n\n⚠️ 用户中断扫描")
+            print("\n\n用户中断扫描")
         except Exception as e:
             import traceback
             print(f"\n❌ 程序执行出错: {str(e)}")
             print("\n完整错误详情:")
             print(traceback.format_exc())
         
-        # 退出选择
         while True:
             choice = input("\n退出(T)/重新开始(S): ").strip().upper()
             if choice == 'T':
