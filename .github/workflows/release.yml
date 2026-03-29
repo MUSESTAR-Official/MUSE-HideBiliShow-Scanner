@@ -24,6 +24,7 @@ jobs:
       - name: Upgrade setuptools, wheel, and install requirements
         run: |
           pip install --upgrade setuptools wheel pyinstaller~=5.13.2 && pip install -r requirements.txt
+          pip install setuptools
 
       - name: Build Pyinstaller
         shell: pwsh
