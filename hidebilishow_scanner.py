@@ -75,6 +75,7 @@ class BilibiliShowScanner:
             'Referer': 'https://show.bilibili.com/',
         })
         self.hidden_projects = []
+        self.test_keywords = ["魑魅魍魉", "测试", "压力"]
         self.scan_results = []
         
     def get_project_info(self, project_id: int) -> Optional[Dict]:
@@ -84,7 +85,7 @@ class BilibiliShowScanner:
             response.raise_for_status()
             
             data = response.json()
-            if data.get('code') == 0:
+            if data.get('code') == 0 or data.get('success') is True:
                 return data.get('data')
             else:
                 print(f"API返回错误 ID {project_id}: {data.get('message', '未知错误')}")
@@ -120,7 +121,11 @@ class BilibiliShowScanner:
         result['name'] = project_info.get('name', '未知项目')
         result['status'] = 'success'
         
-        if result['hide'] == 1:
+        is_hidden = result['hide'] == 1
+        is_test = any(keyword in result['name'] for keyword in self.test_keywords)
+        
+        if is_hidden or is_test:
+            result['is_test_keyword'] = is_test
             self.hidden_projects.append(result)
             
         return result
@@ -129,6 +134,15 @@ class BilibiliShowScanner:
         print(f"开始扫描项目ID范围: {start_id} - {end_id}")
         print(f"扫描间隔: {interval}秒")
         print("-" * 60)
+        
+        # 初始化实时日志文件
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_filename = f"bilibili_scan_log_{timestamp}.txt"
+        print(f"实时日志将保存到: {log_filename}")
+        
+        def write_log(message):
+            with open(log_filename, 'a', encoding='utf-8') as f:
+                f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {message}\n")
         
         total_count = end_id - start_id + 1
         scanned_count = 0
@@ -147,11 +161,21 @@ class BilibiliShowScanner:
             
             if result['status'] == 'error':
                 error_count += 1
-                print(f"❌ 错误: {result['error']}")
+                msg = f"❌ 错误: {result['error']}"
+                print(msg)
+                write_log(f"ID {project_id} - {msg}")
             elif result['hide'] == 1:
-                print(f"发现隐藏项目: {result['name']}")
+                msg = f"发现隐藏项目: {result['name']}"
+                print(msg)
+                write_log(f"ID {project_id} - [隐藏] {result['name']}")
+            elif result.get('is_test_keyword'):
+                msg = f"发现测试/压力项目: {result['name']}"
+                print(msg)
+                write_log(f"ID {project_id} - [测试/压力] {result['name']}")
             else:
-                print(f"hide={result['hide']}")
+                msg = f"hide={result['hide']} - {result['name']}"
+                print(msg)
+                write_log(f"ID {project_id} - hide={result['hide']} - {result['name']}")
             
             if project_id < end_id:
                 time.sleep(interval)
@@ -165,12 +189,13 @@ class BilibiliShowScanner:
         print(f"扫描总数: {total_count}")
         print(f"成功扫描: {total_count - error_count}")
         print(f"错误数量: {error_count}")
-        print(f"发现隐藏项目: {len(self.hidden_projects)}")
+        print(f"发现隐藏/测试项目: {len(self.hidden_projects)}")
         
         if self.hidden_projects:
-            print("\n隐藏项目列表:")
+            print("\n隐藏/测试项目列表:")
             for project in self.hidden_projects:
-                print(f"  ID: {project['id']} - {project['name']}")
+                reason = "隐藏" if project.get('hide') == 1 else "测试/压力"
+                print(f"  ID: {project['id']} - [{reason}] {project['name']}")
     
     def save_results(self, filename: str = None):
         if filename is None:
@@ -180,8 +205,8 @@ class BilibiliShowScanner:
         results_data = {
             'scan_time': datetime.now().isoformat(),
             'total_scanned': len(self.scan_results),
-            'hidden_count': len(self.hidden_projects),
-            'hidden_projects': self.hidden_projects,
+            'hidden_or_test_count': len(self.hidden_projects),
+            'hidden_or_test_projects': self.hidden_projects,
             'all_results': self.scan_results
         }
         
